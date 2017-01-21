@@ -7,22 +7,106 @@
 
 using namespace cv;
 using namespace std;
-Mat undist(Mat src);
-
-int para1 = 150;
-int para2 = 200;
-
+#define XMAX 100
+#define YMAX 100
+#define RMAX 100
+#define THMAX 180
+#define AMAX 40
+#define BMAX 40
 int voteArray[181] = { 0 };
 int finalArray[181] = { 0 };
 int at = 0;
 int at1 = 0;
 int at2 = 0;
 
+int Circle[XMAX][YMAX][RMAX];
 
+int Ellipse[XMAX][YMAX][AMAX][BMAX];
+int Ellipse2[THMAX][AMAX][BMAX];
 Mat element = Mat::ones(3, 3, CV_8UC1); //@comment 追加　3×3の行列で要素はすべて1　dilate処理に必要な行列
+
+void colorExtraction(cv::Mat* src, cv::Mat* dst,
+	int code,
+	int ch1Lower, int ch1Upper, //@comment H(色相)　最小、最大
+	int ch2Lower, int ch2Upper, //@comment S(彩度)　最小、最大
+	int ch3Lower, int ch3Upper  //@comment V(明度)　最小、最大
+	);
+
+//vector<vector<vector<int> > > vc(a, vector<vector<int> >(b, vector<int>(c))); // vc[a][b][c]と同じ
+class El{
+private:
+	int x, y, th, a, b;
+	int count;
+public:
+	El(int x, int y, int th, int a, int b);
+	int get_x();
+	int get_y();
+	int get_th();
+	int get_a();
+	int get_b();
+	int get_count();
+	int set_count(int num);
+
+	vector<vector<int>> sss;
+};
+
+
+El::El(int x, int y, int th, int a, int b){
+	this->x = x;
+	this->y = y;
+	this->th = th;
+	this->a = a;
+	this->b = b;
+
+}
+
+int El::get_x(){
+	return x;
+}
+int El::get_y(){
+	return y;
+}
+int El::get_th(){
+	return th;
+}
+int El::get_a(){
+	return a;
+}
+int El::get_b(){
+	return b;
+}
+int El::get_count(){
+	return count;
+}
+int El::set_count(int num){
+	count = num;
+	return 1;
+}
+
+int a = 30;
+int b = 50;
+int theta = 10;
+int X = 0;
+int Y = 0;
+int rex = 0;
+int rey = 0;
+
+
+vector<Point2i> center;
+vector<int> th;
+vector<Point2i> ax;
+vector<Vec3i> ell;
+//Mat element = Mat::ones(3, 3, CV_8UC1); //@comment 追加　3×3の行列で要素はすべて1　dilate処理に必要な行列
 int main(){
+	vector<El> v;
+	vector<vector<vector<vector<vector<int> > > > >
+		elll(1, vector<vector<vector<vector<int> > > >
+		(1, vector<vector<vector<int> > >
+		(1, vector<vector<int> >
+		(1, vector<int>(1)))));
+
 	Mat src = imread("../ellipse.png", 1);
-	Mat origin;
+	Mat origin, origin2;
 	Mat gaus, lapla;
 	Mat canny;
 	Mat gray;
@@ -33,220 +117,204 @@ int main(){
 	if (!src.data) return -1;
 
 
-	resize(src, src, Size(), 0.05, 0.05);
+	resize(src, src, Size(), 0.5, 0.5);
+
+	colorExtraction(&src, &src, CV_BGR2HSV, 0, 180, 100, 255, 100, 255);
+
 	src.copyTo(origin);
+	src.copyTo(origin2);
+	GaussianBlur(src, gaus, Size(7, 7), 2, 2);
+	//cv::imshow("Gaussian", gaus);
 
-	GaussianBlur(src, gaus, Size(9, 9), 2, 2);
-	imshow("Gaussian", gaus);
-
-	Canny(gaus, canny, 50, 200, 3);
-
+	Canny(gaus, canny, 40, 220, 3);
+	dilate(canny, canny, element, Point(-1, -1), 8);
+	//erode(canny, canny, element, Point(-1, -1), 7);
+	resize(canny, canny, Size(), 0.05, 0.05);
 	//dilate(canny, canny, element, Point(-1, -1), 1); //@comment 膨張処理
 
-	imshow("canny", canny);
-
+	cv::imshow("canny", canny);
+	waitKey(10);
 	cvtColor(gaus, gaus, CV_BGR2GRAY);
-	Laplacian(gaus, lapla, gaus.depth(), 3, 9);
 
-	imshow("Lapla", lapla);
-
-	convertScaleAbs(lapla, lapla, 1, 0);
-
-	//cvtColor(lapla,gray,CV_BGR2GRAY);
 
 	float tan, tan1, tan2;
 
-	//imshow("gray",gray);
-	cout << canny.cols << endl;
-	cout << canny.rows << endl;
+	std::cout << canny.cols << endl;
+	std::cout << canny.rows << endl;
 	for (int j = 0; j < canny.rows; j++){
 		for (int i = 0; i < canny.cols; i++){
-			cout << " " << canny.at<unsigned char>(j, i);
+			std::cout << " " << canny.at<unsigned char>(j, i);
+
 		}
-		cout << endl;
+		std::cout << endl;
 	}
 
+	vector<Point2i> ce;
+
+	//(xcosθ+ysinθ)^2 / a^2 + (-xsinθ + ycosθ)^2 /b ^2 = 1
+	int arr[1][1][1][1][1][1];
+	int flag = 0;
+
+	int num = 0;
+	int maxnum = 50;
+	std::cout << "start" << endl;
 
 
+	std::cout << canny.cols << endl;
+	std::cout << canny.rows << endl;
 
-	//@comment count number
-	for (int j = 0; j < canny.rows; j++){
-		for (int i = 0; i < canny.cols; i++){
-			//cout <<" "<<canny.at<unsigned char>(j,i);
-			if ((int)canny.at<unsigned char>(j, i) >= 255){
-				cout << "i " << i << " j " << j << " value " << (int)canny.at<unsigned char>(j, i) << endl;
-
-				for (int k = j - 4; k < j + 5; k++){
-					for (int l = i - 4; l < i + 5; l++){
-						if (k < 0 || l < 0) continue;
-						if ((int)canny.at<unsigned char>(k, l) >= 255){
-							if (l == i && k == j) continue;
-							/////////////////////////////////////////////////////
-							else if (l == i){
-								at = 90;
-
-								tan1 = (float)(-0.5) / (k - j);
-								tan2 = (float)(+0.5) / (k - j);
-
-								if (k - j < 0){
-									at1 = atanf(tan1) * 180 / CV_PI + 90;
-									at2 = atanf(tan2) * 180 / CV_PI + 90;
-								}
-								else{
-									at1 = atanf(tan1) * 180 / CV_PI + 90;
-									at2 = atanf(tan2) * 180 / CV_PI + 90;
-								}
+	cv::Mat image = Mat::zeros(canny.cols, canny.rows, CV_8UC3);
+	cv::Mat image2;
+	canny.copyTo(image2);
+	//cv::resize(image2,image2,Size(),2,2);
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	for (int y = 0; y < canny.rows; y += 1){
+		std::cout << "test " << y << endl;
+		for (int x = 0; x < canny.cols; x += 1){
+			for (int l = 0; l < THMAX; l += 1){
+				for (int m = 1; m < 60; m += 1){
+					for (int n = 1; n < 30; n += 1){
+						////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+						El el = El(x, y, l, m, n);
+						for (int o = 0; o < 360; o += 1){
+							X = (int)(m)*cos(o*CV_PI / 180) + x;
+							Y = (int)(n)*sin(o*CV_PI / 180) + y;
+							rex = (int)X*cos(l*CV_PI / 180) - Y*sin(l*CV_PI / 180);
+							rey = (int)X*sin(l*CV_PI / 180) + Y*cos(l*CV_PI / 180);
+							/*
+							if (rex >= 0 && rex < canny.cols  && rey >= 0 && rey < canny.rows){
+							image2.at<cv::Vec3b>(rey, rex)[0] = 255;
+							image2.at<cv::Vec3b>(rey, rex)[1] = 255;
+							image2.at<cv::Vec3b>(rey, rex)[2] = 255;
+							//cv::resize(image2,image2,Size(),2,2);
+							cv::imshow("image2", image2);
+							cv::waitKey(100);
+							}*/
+							if (rex >= 0 && rex < canny.cols  && rey >= 0 && rey < canny.rows && (int)canny.at<unsigned char>(rey, rex) >= 255){
+								num++;
+								//std::cout << "X : " << rex << "Y : " << rey << endl;
+								//image.at<cv::Vec3b>(rey, rex)[0] = 255;
+								//image.at<cv::Vec3b>(rey, rex)[1] = 255;
+								//image.at<cv::Vec3b>(rey, rex)[2] = 255;
+								//cv::imshow("image", image);
+								//cv::waitKey(100);
 							}
-							else if (k == j){
-								tan = 0;
-								tan1 = (float)(-0.5) / (l - i);
-
-								tan2 = (float)(0.5) / (l - i);
-
-								if (l - i > 0){
-									at = 0;
-									tan1 = (float)(-0.5) / (l - i);
-									tan2 = (float)(0.5) / (l - i);
-									at1 = atanf(tan1) * 180 / CV_PI;
-									at2 = atanf(tan2) * 180 / CV_PI;
-								}
-								else {
-									at = 180;
-									tan1 = -(float)(-0.5) / (l - i);
-									tan2 = -(float)(0.5) / (l - i);
-									at1 = atanf(tan1) * 180 / CV_PI + 180;
-									at2 = atanf(tan2) * 180 / CV_PI + 180;
-
-								}
-
-							}
-							///////////////////////////////////////////////////
-							else if (fabs(-(float)((k - j) / (l - i))) > 1){
-								if (k == j){
-									tan = 0;
-								}
-
-								else{
-									tan = -(float)(l - i) / (k - j);
-
-
-									if (k - j < 0){
-										tan1 = -(float)(l - i + 0.5) / (k - j);
-										tan2 = -(float)(l - i - 0.5) / (k - j);
-										at = atanf(tan) * 180 / CV_PI + 90;
-										at1 = atanf(tan1) * 180 / CV_PI + 90;
-										at2 = atanf(tan2) * 180 / CV_PI + 90;
-									}
-									else{
-										tan1 = -(float)(l - i - 0.5) / (k - j);
-										tan2 = -(float)(l - i + 0.5) / (k - j);
-										at = atanf(tan) * 180 / CV_PI + 180;
-										at1 = atanf(tan1) * 180 / CV_PI + 180;
-										at2 = atanf(tan2) * 180 / CV_PI + 180;
-									}
-								}
-								if (tan == 0){
-									at = 90;
-								}
-							}
-							////////////////////////////////////////////////////
-							else{
-
-								tan = -(float)(k - j) / (l - i);
-
-								if (l - i > 0){
-									if (tan <= 0){
-										tan1 = -(float)(k - j + 0.5) / (l - i);
-										tan2 = -(float)(k - j - 0.5) / (l - i);
-										at = atanf(tan) * 180 / CV_PI + 180;
-										at1 = atanf(tan1) * 180 / CV_PI + 180;
-										at2 = atanf(tan2) * 180 / CV_PI + 180;
-									}
-									else{
-										tan1 = -(float)(k - j + 0.5) / (l - i);
-										tan2 = -(float)(k - j - 0.5) / (l - i);
-										at = atanf(tan) * 180 / CV_PI;
-										at1 = atanf(tan1) * 180 / CV_PI;
-										at2 = atanf(tan2) * 180 / CV_PI;
-
-									}
-								}
-								else{
-									if (tan < 0){
-										tan1 = -(float)(k - j + 0.5) / (l - i);
-										tan2 = -(float)(k - j - 0.5) / (l - i);
-										at = atanf(tan) * 180 / CV_PI + 180;
-										at1 = atanf(tan1) * 180 / CV_PI + 180;
-										at2 = atanf(tan2) * 180 / CV_PI + 180;
-									}
-									else{
-										tan1 = -(float)(k - j - 0.5) / (l - i);
-										tan2 = -(float)(k - j + 0.5) / (l - i);
-										at = atanf(tan) * 180 / CV_PI;
-										at1 = atanf(tan1) * 180 / CV_PI;
-										at2 = atanf(tan2) * 180 / CV_PI;
-
-									}
-
-								}
-
-							}
-							if (at1 <= at && at <= at2){
-								//for (int e = (int)at1; e < (int)at2; e++){
-								voteArray[at]++;
-								//}
-							}
-							cout << "l: " << l << " k: " << k << " tan: " << tan << endl;
-							cout << "at: " << at << " at1 " << at1 << " at2 " << at2 << endl << endl;
 						}
+
+						if (num > maxnum){
+							//std::cout << num << endl;
+							el.set_count(num);
+							v.push_back(el);
+							/*
+							std::cout << "x " << el.get_x() << " y " << el.get_y()
+								<< " th " << el.get_th() << " a " << el.get_a()
+								<< " b " << el.get_b() << " count " << el.get_count() << endl;
+							*/
+							cv::ellipse(image2, Point(el.get_x(), el.get_y()), Size(el.get_a(), el.get_b()), el.get_th(), 0, 360, Scalar(255, 255, 255), 1, 2);
+							cv::circle(image2,Point(el.get_x(),el.get_y()),1,Scalar(255,255,255),-1,CV_AA);
+							imshow("origin", image2);
+							//cvWaitKey(10);
+						}
+						num = 0;
+						////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 					}
 				}
-				cout << endl;
-
-				for (int i = 0; i < 181; i++){
-					cout << " θ= " << i << " : num= " << voteArray[i] << " ";
-				}
-				cout << endl;
-				cout << endl;
 			}
 		}
-		cout << endl;
 	}
 
 
+	std::cout << "v size : " << v.size() << endl;
+	vector<El>::iterator it;
+	for (it = v.begin(); it != v.end(); it++){
+		std::cout << "x " << it->get_x() << " y " << it->get_y()
+			<< " th " << it->get_th() << " a " << it->get_a()
+			<< " b " << it->get_b() << " count " << it->get_count() << endl;
+		cv::ellipse(image2, Point(it->get_x(), it->get_y()), Size(it->get_a(), it->get_b()), it->get_th(), 0, 360, Scalar(255, 255, 255), 1, 2);
+		imshow("origin", image2);
+	}
+	//resize(origin,origin,Size(),5,5);
 
-	//imshow("origin", origin);
 
-	for (int i = 0; i < 181; i++){
-		cout << "θ" << i << " num " << voteArray[i] << endl;
-		if (voteArray[i] > 10){
-			finalArray[i] = voteArray[i];
+
+
+
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+	
+
+	cv::waitKey(0);
+	return 0;
+}
+
+
+
+void colorExtraction(cv::Mat* src, cv::Mat* dst,
+	int code,
+	int ch1Lower, int ch1Upper, //@comment H(色相)　最小、最大
+	int ch2Lower, int ch2Upper, //@comment S(彩度)　最小、最大
+	int ch3Lower, int ch3Upper  //@comment V(明度)　最小、最大
+	)
+{
+	cv::Mat colorImage;
+	int lower[3];
+	int upper[3];
+
+	cv::Mat lut = cv::Mat(256, 1, CV_8UC3);
+
+	cv::cvtColor(*src, colorImage, code);
+
+	lower[0] = ch1Lower;
+	lower[1] = ch2Lower;
+	lower[2] = ch3Lower;
+
+	upper[0] = ch1Upper;
+	upper[1] = ch2Upper;
+	upper[2] = ch3Upper;
+
+	for (int i = 0; i < 256; i++) {
+		for (int k = 0; k < 3; k++) {
+			if (lower[k] <= upper[k]) {
+				if ((lower[k] <= i) && (i <= upper[k])) {
+					lut.data[i*lut.step + k] = 255;
+				}
+				else {
+					lut.data[i*lut.step + k] = 0;
+				}
+			}
+			else {
+				if ((i <= upper[k]) || (lower[k] <= i)) {
+					lut.data[i*lut.step + k] = 255;
+				}
+				else {
+					lut.data[i*lut.step + k] = 0;
+				}
+			}
 		}
 	}
-	cout << endl;
-	for (int i = 0; i < 181; i++){
-		cout << "θ" << i << " num " << finalArray[i] << endl;
+	//@comment LUTを使用して二値化
+	cv::LUT(colorImage, lut, colorImage);
 
-	}
-
-	waitKey(0);
-	return 0;
+	//@comment Channel毎に分解
+	std::vector<cv::Mat> planes;
+	cv::split(colorImage, planes);
+	//imshow("test", planes[2]);
+	//@comment マスクを作成
+	cv::Mat maskImage;
+	cv::bitwise_and(planes[0], planes[1], maskImage);
+	//imshow("test2", maskImage);
+	cv::bitwise_and(maskImage, planes[2], maskImage);
+	//imshow("test3", maskImage);
+	dilate(maskImage, maskImage, element, Point(-1, -1), 25);
+	erode(maskImage, maskImage, element, Point(-1, -1), 25);
+	//@comemnt 出力
+	cv::Mat maskedImage;
+	src->copyTo(maskedImage, ~maskImage);
+	*dst = maskedImage;
 
 }
-
-
-
-//@comment カメラキャリブレーション用関数(gopro用)
-Mat undist(Mat src_img)
-{
-	Mat dst_img;
-
-	//@comment カメラマトリックス(gopro)
-	Mat cameraMatrix = (Mat_<double>(3, 3) << 469.96, 0, 400, 0, 467.68, 300, 0, 0, 1);
-	//@comment 歪み行列(gopro)
-	Mat distcoeffs = (Mat_<double>(1, 5) << -0.18957, 0.037319, 0, 0, -0.00337);
-
-	undistort(src_img, dst_img, cameraMatrix, distcoeffs);
-	return dst_img;
-}
-

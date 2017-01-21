@@ -11,8 +11,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{2B2AAA0F-BD85-4310-8ED4-5C5D8D57DA5E}</ProjectGuid>
-    <RootNamespace>findEllipse</RootNamespace>
+    <ProjectGuid>{E8EF1430-337F-4FEB-A30E-2C8A55E246F1}</ProjectGuid>
+    <RootNamespace>Hough_detect</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -44,12 +44,9 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\文明\Downloads\opencv\build\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\文明\Downloads\opencv\build\x86\vc12\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opencv_highgui249d.lib;opencv_core249d.lib;opencv_imgproc249d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -67,7 +64,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="findEllipse.cpp" />
+    <ClCompile Include="Ellipse.cpp" />
+    <ClCompile Include="Hough_detect.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Ellipse.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
